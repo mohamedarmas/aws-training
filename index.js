@@ -1,8 +1,10 @@
-const { SQSClient, SendMessageCommand } = require('@aws-sdk/client-sqs');
+const { SNSClient, PublishCommand } = require('@aws-sdk/client-sns');
 
-const sqs = new SQSClient({ region: 'us-east-1' }); // use your AWS region
+const sns = new SNSClient({ region: 'us-east-1' });
 
-const QUEUE_URL = 'https://sqs.us-east-1.amazonaws.com/599723480138/task-events-queue';
+const TOPIC_ARN = 'arn:aws:sns:us-east-1:599723480138:task-events-topic';
+// use your AWS region
+
 
 const express = require('express');
 const { v4: uuidv4 } = require('uuid');
@@ -32,16 +34,17 @@ app.post('/tasks', async (req, res) => {
 
   // send SQS message
   try {
-    await sqs.send(new SendMessageCommand({
-      QueueUrl: QUEUE_URL,
-      MessageBody: JSON.stringify({
-        event: 'task_created',
-        task
-      })
-    }));
-    console.log("Message sent to SQS");
+    await sns.send(new PublishCommand({
+  TopicArn: TOPIC_ARN,
+  Message: JSON.stringify({
+    event: 'task_created',
+    task
+  })
+}));
+
+    console.log("Message sent to SNS");
   } catch (err) {
-    console.error("Failed to send SQS message", err);
+    console.error("Failed to send SNS message", err);
   }
 
   res.status(201).json(task);
@@ -82,3 +85,4 @@ app.delete('/tasks/:id', (req, res) => {
 app.listen(PORT, () => {
   console.log(`Server running on port ${PORT}`);
 });
+
