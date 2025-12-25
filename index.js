@@ -1,3 +1,9 @@
+const { SQSClient, SendMessageCommand } = require('@aws-sdk/client-sqs');
+
+const sqs = new SQSClient({ region: 'us-east-1' }); // use your AWS region
+
+const QUEUE_URL = 'https://sqs.us-east-1.amazonaws.com/599723480138/task-events-queue';
+
 const express = require('express');
 const { v4: uuidv4 } = require('uuid');
 
@@ -15,15 +21,32 @@ app.get('/health', (req, res) => {
 });
 
 // Create task
-app.post('/tasks', (req, res) => {
+app.post('/tasks', async (req, res) => {
   const task = {
     id: uuidv4(),
     title: req.body.title,
     completed: false
   };
+
   tasks.push(task);
+
+  // send SQS message
+  try {
+    await sqs.send(new SendMessageCommand({
+      QueueUrl: QUEUE_URL,
+      MessageBody: JSON.stringify({
+        event: 'task_created',
+        task
+      })
+    }));
+    console.log("Message sent to SQS");
+  } catch (err) {
+    console.error("Failed to send SQS message", err);
+  }
+
   res.status(201).json(task);
 });
+
 
 // Get all tasks
 app.get('/tasks', (req, res) => {
